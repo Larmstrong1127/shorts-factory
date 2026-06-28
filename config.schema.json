@@ -1,0 +1,62 @@
+{
+  "gemini": {
+    "api_key": "<GEMINI_API_KEY>",
+    "pre_render_model": "gemini-2.5-flash",
+    "post_render_model": "gemini-2.5-pro",
+    "min_score": 75
+  },
+  "ollama": {
+    "enabled": true,
+    "model": "llama3.2",
+    "host": "http://localhost:11434"
+  },
+  "pexels": {
+    "api_key": "<PEXELS_API_KEY>"
+  },
+  "enhance": {
+    "enabled": true,
+    "upscale": true,
+    "upscale_model": "RealESRGAN_x2plus",
+    "interpolate": true,
+    "target_fps": 60,
+    "tile_size": 512
+  },
+  "autopilot": {
+    "daily_quota": 1,
+    "window": {
+      "start_day": "Sunday",
+      "start_time": "22:00",
+      "end_day": "Thursday",
+      "end_time": "17:00"
+    },
+    "exclude_themes": []
+  },
+  "dubbing": {
+    "enabled": true,
+    "languages": ["es", "pt"],
+    "top_n": 3
+  },
+  "thumbnail_ab": {
+    "enabled": true,
+    "check_hours": 48
+  },
+  "competitor": {
+    "max_results": 20,
+    "velocity_days": 14,
+    "scan_interval_days": 6
+  },
+  "playlists": {
+    "enabled": true,
+    "privacy": "public"
+  },
+  "accounts": [
+    {
+      "id": "<ACCOUNT_ID>",
+      "platform": "youtube",
+      "theme": "<THEME_ID>",
+      "auto_schedule": true,
+      "slots": ["08:00", "17:00", "21:00"],
+      "token_path": "tokens/yt_<ACCOUNT_ID>.json"
+    }
+  ]
+}

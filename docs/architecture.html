@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Shorts Factory — System Architecture</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  background: #080c10;
+  color: #c9d1d9;
+  padding: 28px 24px 60px;
+  min-width: 900px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ── Header ── */
+.hdr { text-align: center; margin-bottom: 32px; }
+.hdr h1 {
+  font-size: 1.9rem; font-weight: 900; letter-spacing: 3px;
+  background: linear-gradient(90deg, #58a6ff, #79c0ff, #d2a8ff, #f78166);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.hdr .sub { color: #8b949e; font-size: 0.8rem; margin-top: 5px; letter-spacing: 1px; }
+.badge {
+  display: inline-flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+  margin-top: 12px;
+}
+.badge span {
+  background: #161b22; border: 1px solid #30363d; border-radius: 20px;
+  padding: 3px 10px; font-size: 0.72rem; color: #8b949e;
+}
+.badge span b { color: #58a6ff; }
+
+/* ── Grid layout ── */
+.arch { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; max-width: 1100px; margin: 0 auto; }
+.arch-wide { grid-column: span 3; }
+.arch-half { grid-column: span 2; }
+
+/* ── Layer header ── */
+.layer-label {
+  font-size: 0.65rem; letter-spacing: 3px; text-transform: uppercase;
+  color: #8b949e; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+}
+.layer-label::after { content: ''; flex: 1; height: 1px; background: #21262d; }
+
+/* ── Module card ── */
+.mod {
+  background: #0d1117; border: 1px solid #21262d; border-radius: 10px;
+  padding: 14px; position: relative; overflow: hidden;
+}
+.mod::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+}
+.mod.blue::before { background: linear-gradient(90deg, #1f6feb, #388bfd); }
+.mod.purple::before { background: linear-gradient(90deg, #6e40c9, #a371f7); }
+.mod.green::before { background: linear-gradient(90deg, #196c2e, #3fb950); }
+.mod.orange::before { background: linear-gradient(90deg, #9e4c0a, #f0883e); }
+.mod.red::before { background: linear-gradient(90deg, #8e1519, #f85149); }
+.mod.teal::before { background: linear-gradient(90deg, #0e4e4e, #2dd4bf); }
+.mod.yellow::before { background: linear-gradient(90deg, #5a4000, #d29922); }
+.mod.pink::before { background: linear-gradient(90deg, #6e1e5c, #e879f9); }
+
+.mod-title {
+  font-size: 0.82rem; font-weight: 700; margin-bottom: 2px;
+  display: flex; align-items: center; gap: 6px;
+}
+.mod-file { font-size: 0.67rem; color: #6e7681; margin-bottom: 9px; }
+.mod-file code { color: #8b949e; }
+
+/* ── Function list ── */
+.fn-list { display: flex; flex-direction: column; gap: 4px; }
+.fn {
+  background: #161b22; border: 1px solid #21262d; border-radius: 6px;
+  padding: 5px 8px; font-size: 0.7rem;
+}
+.fn-sig { color: #79c0ff; }
+.fn-sig .fn-name { color: #d2a8ff; }
+.fn-sig .fn-ret { color: #3fb950; }
+.fn-desc { color: #6e7681; font-size: 0.66rem; margin-top: 1px; }
+
+/* ── API endpoint ── */
+.ep {
+  background: #161b22; border: 1px solid #21262d; border-radius: 6px;
+  padding: 5px 8px; font-size: 0.7rem; display: flex; align-items: baseline; gap: 6px;
+}
+.ep-method { font-weight: 700; font-size: 0.63rem; min-width: 32px; }
+.ep-method.get { color: #3fb950; }
+.ep-method.post { color: #f0883e; }
+.ep-method.del { color: #f85149; }
+.ep-path { color: #79c0ff; }
+.ep-desc { color: #6e7681; font-size: 0.65rem; }
+
+/* ── Data flow arrows ── */
+.flow-row {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0; margin: 6px 0; max-width: 1100px; margin-left: auto; margin-right: auto;
+}
+.flow-box {
+  background: #0d1117; border: 1px solid #30363d; border-radius: 8px;
+  padding: 8px 14px; font-size: 0.72rem; color: #8b949e; white-space: nowrap;
+}
+.flow-arrow {
+  display: flex; flex-direction: column; align-items: center;
+  min-width: 60px; position: relative;
+}
+.flow-arrow::before {
+  content: ''; display: block; height: 1px; width: 100%;
+  background: linear-gradient(90deg, transparent, #388bfd, transparent);
+}
+.flow-arrow .fa-label {
+  font-size: 0.6rem; color: #388bfd; margin-top: 2px; white-space: nowrap;
+}
+
+/* ── Table ── */
+.tbl { width: 100%; border-collapse: collapse; font-size: 0.71rem; }
+.tbl th { color: #8b949e; text-align: left; padding: 4px 8px; border-bottom: 1px solid #21262d; font-weight: 600; font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; }
+.tbl td { padding: 5px 8px; border-bottom: 1px solid #0d1117; vertical-align: top; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl .k { color: #79c0ff; }
+.tbl .v { color: #3fb950; }
+.tbl .c { color: #6e7681; }
+
+/* ── Tech pill ── */
+.pills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.pill {
+  background: #161b22; border: 1px solid #30363d; border-radius: 4px;
+  padding: 2px 8px; font-size: 0.66rem; color: #8b949e;
+}
+.pill.hi { border-color: #388bfd; color: #79c0ff; }
+.pill.gi { border-color: #a371f7; color: #d2a8ff; }
+.pill.gr { border-color: #3fb950; color: #7ee787; }
+.pill.or { border-color: #f0883e; color: #ffa657; }
+
+/* ── Config key ── */
+.cfg { font-size: 0.69rem; color: #6e7681; margin-top: 6px; }
+.cfg code { color: #f0883e; }
+
+/* ── Section divider ── */
+.sec {
+  font-size: 0.65rem; letter-spacing: 3px; text-transform: uppercase;
+  color: #8b949e; text-align: center; margin: 20px 0 12px;
+  display: flex; align-items: center; gap: 12px; max-width: 1100px; margin-left: auto; margin-right: auto;
+}
+.sec::before, .sec::after { content: ''; flex: 1; height: 1px; background: #21262d; }
+
+/* ── State machine ── */
+.states { display: flex; align-items: center; justify-content: center; gap: 0; flex-wrap: wrap; }
+.state-node {
+  background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+  padding: 7px 12px; font-size: 0.72rem; text-align: center; min-width: 80px;
+}
+.state-edge {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 0 4px;
+}
+.state-edge .line { width: 30px; height: 1px; background: #388bfd; }
+.state-edge .lbl { font-size: 0.6rem; color: #388bfd; white-space: nowrap; }
+.s-review { border-color: #d29922; color: #e3b341; }
+.s-ready  { border-color: #388bfd; color: #79c0ff; }
+.s-held   { border-color: #f85149; color: #ff7b72; }
+.s-sched  { border-color: #3fb950; color: #7ee787; }
+.s-pub    { border-color: #a371f7; color: #d2a8ff; }
+
+/* ── Score gauge ── */
+.score-bars { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+.score-bar { display: flex; align-items: center; gap: 8px; font-size: 0.68rem; }
+.score-bar .lbl { width: 90px; color: #8b949e; text-align: right; }
+.score-bar .track { flex: 1; height: 6px; background: #21262d; border-radius: 3px; overflow: hidden; }
+.score-bar .fill { height: 100%; border-radius: 3px; }
+.score-bar .pct { width: 30px; color: #8b949e; font-size: 0.63rem; }
+
+.scroll-hint { text-align: center; color: #6e7681; font-size: 0.65rem; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <h1>SHORTS FACTORY — SYSTEM ARCHITECTURE</h1>
+  <div class="sub">Autonomous Short-Form Video Pipeline · Python 3.13 · Windows 10 · RTX 3090</div>
+  <div class="badge">
+    <span>Runtime: <b>CPython 3.13</b></span>
+    <span>Web: <b>Flask + SSE</b></span>
+    <span>AI: <b>Gemini 2.5 Flash/Pro</b></span>
+    <span>TTS: <b>Edge TTS (async)</b></span>
+    <span>Video: <b>ffmpeg</b></span>
+    <span>GPU: <b>HunyuanVideo fp8 / Wan2.1 1.3B</b></span>
+    <span>Image: <b>FLUX.1-dev fp8 / SDXL</b></span>
+    <span>Upscale: <b>spandrel RealESRGAN x2</b></span>
+    <span>Accounts: <b>6 YouTube · 4 TikTok</b></span>
+  </div>
+</div>
+
+<div class="scroll-hint">↓ Full architecture below — scroll to explore all layers ↓</div>
+
+<!-- ENTRY POINTS -->
+<div class="sec">Entry Points &amp; Orchestration</div>
+<div class="arch">
+
+  <div class="mod blue">
+    <div class="mod-title">🕐 run_autopilot.py</div>
+    <div class="mod-file"><code>run_autopilot.py</code> · Task Scheduler / cron / manual</div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">run_pipeline(<span class="fn-name">cfg</span>) → <span class="fn-ret">report</span></span><div class="fn-desc">trends → autopilot → verifier → autoschedule · full daily cycle</div></div>
+      <div class="fn"><span class="fn-sig">_competitor_scan_safe(<span class="fn-name">cfg</span>)</span><div class="fn-desc">weekly gated — skips if last scan &lt; 6 days ago</div></div>
+      <div class="fn"><span class="fn-sig">_thumbnail_ab_safe(<span class="fn-name">cfg</span>)</span><div class="fn-desc">daily A/B check + winner swap via thumbnails.set</div></div>
+      <div class="fn"><span class="fn-sig">_retention_safe(<span class="fn-name">cfg</span>)</span><div class="fn-desc">weekly audienceWatchRatio pull per published video</div></div>
+    </div>
+    <div class="pills"><span class="pill hi">--window flag</span><span class="pill">Sun 10pm–Thu 5pm gate</span><span class="pill">utf-8 reconfigure</span></div>
+  </div>
+
+  <div class="mod blue">
+    <div class="mod-title">🎬 make_short.py</div>
+    <div class="mod-file"><code>make_short.py</code> · CLI / called by autopilot</div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">make_one(<span class="fn-name">cfg, topic_hint, theme_id</span>) → <span class="fn-ret">path</span></span><div class="fn-desc">full render pipeline: script → TTS → footage → assemble → enhance → review</div></div>
+    </div>
+    <div class="cfg">Render gate: Gemini pre-render score ≥ <code>min_score</code> (75) or skip</div>
+    <div class="pills">
+      <span class="pill or">--wan / --hunyuan / --flux</span>
+      <span class="pill hi">RenderCost tracking</span>
+      <span class="pill gi">provider_score routing</span>
+    </div>
+  </div>
+
+  <div class="mod blue">
+    <div class="mod-title">🖥️ dashboard.py</div>
+    <div class="mod-file"><code>dashboard.py</code> · Flask dev server :5000</div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">GET <span class="fn-name">/api/videos</span> → <span class="fn-ret">library list</span></span></div>
+      <div class="fn"><span class="fn-sig">POST <span class="fn-name">/api/generate</span> → <span class="fn-ret">job_id (SSE)</span></span><div class="fn-desc">streams make_short in bg thread via Server-Sent Events</div></div>
+      <div class="fn"><span class="fn-sig">POST <span class="fn-name">/api/autopilot/run</span></span><div class="fn-desc">triggers run_pipeline async</div></div>
+      <div class="fn"><span class="fn-sig">POST <span class="fn-name">/api/dub/run</span></span><div class="fn-desc">translate+re-synth video into es/pt/fr/de/hi</div></div>
+    </div>
+    <div class="pills"><span class="pill hi">40+ endpoints</span><span class="pill">SSE job streaming</span><span class="pill">no auth (localhost)</span></div>
+  </div>
+
+</div>
+
+<!-- PIPELINE CORE -->
+<div class="sec">Core Pipeline Modules</div>
+
+<div style="max-width:1100px;margin:0 auto 14px;background:#0d1117;border:1px solid #21262d;border-radius:10px;padding:14px;">
+  <div class="layer-label">Render Pipeline Data Flow</div>
+  <div class="flow-row" style="flex-wrap:wrap; gap:4px; justify-content:flex-start;">
+    <div class="flow-box" style="border-color:#d29922;color:#e3b341;">competitor<br><span style="font-size:0.6rem;color:#6e7681;">topic_hint_for()</span></div>
+    <div class="flow-arrow"><div style="width:30px;height:1px;background:#388bfd;"></div><div class="fa-label">hint</div></div>
+    <div class="flow-box" style="border-color:#388bfd;color:#79c0ff;">scriptgen<br><span style="font-size:0.6rem;color:#6e7681;">generate()</span></div>
+    <div class="flow-arrow"><div style="width:30px;height:1px;background:#388bfd;"></div><div class="fa-label">lines[]</div></div>
+    <div class="flow-box" style="border-color:#388bfd;color:#79c0ff;">gemini_review<br><span style="font-size:0.6rem;color:#6e7681;">pre_render_review()</span></div>
+    <div class="flow-arrow"><div style="width:30px;height:1px;background:#388bfd;"></div><div class="fa-label">score≥75</div></div>
+    <div class="flow-box" style="border-color:#a371f7;color:#d2a8ff;">tts<br><span style="font-size:0.6rem;color:#6e7681;">speak_lines()</span></div>
+    <div class="flow-arrow"><div style="width:30px;height:1px;background:#388bfd;"></div><div class="fa-label">wavs[]</div></div>
+    <div class="flow-box" style="border-color:#a371f7;color:#d2a8ff;">music<br><span style="font-size:0.6rem;color:#6e7681;">mix_under()</span></div>
+    <div class="flow-arrow"><div style="width:30px;height:1px;background:#388bfd;"></div><div class="fa-label">mixed.wav</div></div>
+    <div class="flow-box" style="border-color:#3fb950;color:#7ee787;">footage<br><span style="font-size:0.6rem;color:#6e7681;">fetch_background()</span></div>
+    <div class="flow-arrow"><div style="width:30px;height:1px;background:#388bfd;"></div><div class="fa-label">bg.mp4</div></div>
+    <div class="flow-box" style="border-color:#3fb950;color:#7ee787;">captions<br><span style="font-size:0.6rem;color:#6e7681;">build_ass()</span></div>
+    <div class="flow-arrow"><div style="width:30px;height:1px;background:#388bfd;"></div><div class="fa-label">sub.ass</div></div>
+    <div class="flow-box" style="border-color:#f0883e;color:#ffa657;">assemble<br><span style="font-size:0.6rem;color:#6e7681;">composite()</span></div>
+    <div class="flow-arrow"><div style="width:30px;height:1px;background:#388bfd;"></div><div class="fa-label">raw.mp4</div></div>
+    <div class="flow-box" style="border-color:#f0883e;color:#ffa657;">enhance<br><span style="font-size:0.6rem;color:#6e7681;">upscale+interp</span></div>
+    <div class="flow-arrow"><div style="width:30px;height:1px;background:#388bfd;"></div><div class="fa-label">4K 60fps</div></div>
+    <div class="flow-box" style="border-color:#3fb950;color:#7ee787;">library<br><span style="font-size:0.6rem;color:#6e7681;">write_meta()</span></div>
+  </div>
+</div>
+
+<div class="arch">
+
+  <div class="mod purple">
+    <div class="mod-title">📝 scriptgen.py</div>
+    <div class="mod-file"><code>core/scriptgen.py</code></div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">generate(<span class="fn-name">cfg, topic_hint, theme_id</span>) → <span class="fn-ret">dict</span></span><div class="fn-desc">{title, lines[], search_terms[], hashtags[], description}</div></div>
+      <div class="fn"><span class="fn-sig">_from_ollama(<span class="fn-name">cfg, topic_hint</span>)</span><div class="fn-desc">Ollama JSON-mode · llama3.2 · structured prompt w/ hook archetype rule</div></div>
+      <div class="fn"><span class="fn-sig">_from_bank()</span><div class="fn-desc">topics.json pool · deduped via used_topics.json · 50-item FIFO</div></div>
+    </div>
+    <div class="cfg">Retention hint injection: <code>retention_prompt_hint(theme_id)</code> → prepended to topic_hint if avg_drop_at &lt; 0.50</div>
+    <div class="cfg">Competitor injection: <code>topic_hint_for(theme_id)</code> → velocity-weighted viral phrase</div>
+  </div>
+
+  <div class="mod purple">
+    <div class="mod-title">🎙️ tts.py</div>
+    <div class="mod-file"><code>core/tts.py</code></div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">speak_lines(<span class="fn-name">lines[], style, workdir</span>) → <span class="fn-ret">wavs[], durs[]</span></span></div>
+      <div class="fn"><span class="fn-sig">_edge_tts_async(<span class="fn-name">line, voice</span>) → <span class="fn-ret">wav</span></span><div class="fn-desc">edge-tts Communicate() · asyncio.run() per line · unofficial API</div></div>
+      <div class="fn"><span class="fn-sig">_kokoro(<span class="fn-name">line, voice</span>)</span><div class="fn-desc">local neural model fallback (kokoro + soundfile)</div></div>
+      <div class="fn"><span class="fn-sig">_windows_tts(<span class="fn-name">line</span>)</span><div class="fn-desc">System.Speech SSML last resort · PowerShell subprocess</div></div>
+    </div>
+    <div class="cfg">Voice pools: <code>narrator / casual / energetic / spooky / calm</code> · 30+ voices · one picked per Short</div>
+  </div>
+
+  <div class="mod green">
+    <div class="mod-title">🎥 footage.py</div>
+    <div class="mod-file"><code>core/footage.py</code></div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">fetch_background(<span class="fn-name">terms, out, api_key, theme_id, cfg</span>) → <span class="fn-ret">path</span></span><div class="fn-desc">Pexels first → archive.org fallback (if theme footage_source=="archive")</div></div>
+      <div class="fn"><span class="fn-sig">_fetch_pexels(<span class="fn-name">terms, out, key</span>)</span><div class="fn-desc">Pexels API v1 · video search · portrait crop via ffmpeg</div></div>
+    </div>
+    <div class="pills"><span class="pill gr">9:16 crop</span><span class="pill">min_seconds=8</span><span class="pill">portrait 544×960</span></div>
+  </div>
+
+  <div class="mod purple">
+    <div class="mod-title">💬 captions.py</div>
+    <div class="mod-file"><code>core/captions.py</code></div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">build_ass(<span class="fn-name">lines[], durs[], path, font, style</span>)</span><div class="fn-desc">ASS subtitle format · karaoke timing · per-theme color themes</div></div>
+    </div>
+    <div class="cfg">Styles: <code>yellow / gold / red / white / pink</code> · bold outline · word-sync</div>
+  </div>
+
+  <div class="mod orange">
+    <div class="mod-title">🔧 assemble.py</div>
+    <div class="mod-file"><code>core/assemble.py</code></div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">composite(<span class="fn-name">bg, voice_wav, ass, out</span>)</span><div class="fn-desc">ffmpeg: overlay ASS on bg · mix audio · libx264 crf=18 · aac 128k</div></div>
+      <div class="fn"><span class="fn-sig">concat_audio(<span class="fn-name">wavs[], out, workdir</span>)</span><div class="fn-desc">ffmpeg concat filter · 24kHz mono WAV normalization</div></div>
+    </div>
+    <div class="pills"><span class="pill">yuv420p</span><span class="pill">-preset fast</span><span class="pill">-shortest</span></div>
+  </div>
+
+  <div class="mod orange">
+    <div class="mod-title">⚡ enhance.py</div>
+    <div class="mod-file"><code>core/enhance.py</code></div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">enhance(<span class="fn-name">path, cfg</span>) → <span class="fn-ret">path</span></span><div class="fn-desc">fail-soft wrapper: upscale → interpolate → return orig on any err</div></div>
+      <div class="fn"><span class="fn-sig">_tiled_upscale(<span class="fn-name">frame, model, tile_size</span>)</span><div class="fn-desc">spandrel RealESRGAN_x2plus · tiled for VRAM · weights → ~/.cache/spandrel/</div></div>
+      <div class="fn"><span class="fn-sig">interpolate_video(<span class="fn-name">path, target_fps</span>)</span><div class="fn-desc">ffmpeg minterpolate · 16fps→60fps · mi_mode=mci</div></div>
+    </div>
+    <div class="cfg">Config: <code>enhance.enabled / upscale / interpolate / target_fps / tile_size(512)</code></div>
+  </div>
+
+</div>
+
+<!-- AI BACKENDS -->
+<div class="sec">AI Generation Backends</div>
+<div class="arch">
+
+  <div class="mod red">
+    <div class="mod-title">🎞️ aivideo.py — HunyuanVideo fp8</div>
+    <div class="mod-file"><code>core/aivideo.py</code> · --hunyuan flag</div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">generate_video(<span class="fn-name">prompt, out, cfg</span>)</span><div class="fn-desc">HunyuanVideoPipeline · BitsAndBytesConfig(load_in_8bit=True) · ~20GB VRAM</div></div>
+    </div>
+    <div class="cfg">Resolution: <code>544×960 @24fps</code> · 50 steps · seed=42 · 14 scenes/Short</div>
+    <div class="pills"><span class="pill or">~7-9h render</span><span class="pill">fp8 quantized</span><span class="pill">portrait native</span></div>
+  </div>
+
+  <div class="mod red">
+    <div class="mod-title">🌊 wan_video.py — Wan2.1 T2V</div>
+    <div class="mod-file"><code>core/wan_video.py</code> · --wan flag</div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">generate_video(<span class="fn-name">prompt, out, cfg</span>)</span><div class="fn-desc">Wan2.1-T2V-1.3B (~6GB) or 14B nf4 (~14-16GB) · WanVideoWrapper</div></div>
+    </div>
+    <div class="cfg">1.3B: fast draft · 14B nf4: near-HunyuanVideo quality at half VRAM</div>
+  </div>
+
+  <div class="mod red">
+    <div class="mod-title">🖼️ aiimage.py — FLUX / SDXL</div>
+    <div class="mod-file"><code>core/aiimage.py</code></div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">generate_image(<span class="fn-name">prompt, out, cfg</span>)</span><div class="fn-desc">FluxPipeline fp8 transformer or SDXL · 544×960 portrait · zodiac_ai stills</div></div>
+    </div>
+    <div class="pills"><span class="pill">flux-dev fp8</span><span class="pill">sdxl fallback</span><span class="pill">item-first prompt</span></div>
+  </div>
+
+  <div class="mod purple arch-half">
+    <div class="mod-title">🤖 gemini_review.py — Pre/Post Render AI Gate</div>
+    <div class="mod-file"><code>core/gemini_review.py</code></div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">pre_render_review(<span class="fn-name">lines[], theme_id, cfg</span>) → <span class="fn-ret">{score, pass, feedback}</span></span><div class="fn-desc">Gemini Flash · structured JSON output · min_score=75 gate</div></div>
+      <div class="fn"><span class="fn-sig">post_render_review(<span class="fn-name">video_path, meta, cfg</span>) → <span class="fn-ret">supervisor_result</span></span><div class="fn-desc">async hook · video frame extraction · multimodal analysis</div></div>
+      <div class="fn"><span class="fn-sig">load_supervisor_result(<span class="fn-name">video_id</span>)</span><div class="fn-desc">cached JSON at output/supervisor/{video_id}.json</div></div>
+    </div>
+    <div class="score-bars">
+      <div class="score-bar"><div class="lbl">hook strength</div><div class="track"><div class="fill" style="width:30%;background:#388bfd;"></div></div><div class="pct">30%</div></div>
+      <div class="score-bar"><div class="lbl">quality</div><div class="track"><div class="fill" style="width:20%;background:#a371f7;"></div></div><div class="pct">20%</div></div>
+      <div class="score-bar"><div class="lbl">originality</div><div class="track"><div class="fill" style="width:20%;background:#3fb950;"></div></div><div class="pct">20%</div></div>
+      <div class="score-bar"><div class="lbl">CTA</div><div class="track"><div class="fill" style="width:15%;background:#f0883e;"></div></div><div class="pct">15%</div></div>
+      <div class="score-bar"><div class="lbl">pacing</div><div class="track"><div class="fill" style="width:15%;background:#f85149;"></div></div><div class="pct">15%</div></div>
+    </div>
+  </div>
+
+  <div class="mod purple">
+    <div class="mod-title">🧮 provider_score.py — Backend Router</div>
+    <div class="mod-file"><code>core/provider_score.py</code></div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">best_video_backend(<span class="fn-name">cfg, theme_id, topic</span>) → <span class="fn-ret">key</span></span></div>
+      <div class="fn"><span class="fn-sig">best_image_backend(<span class="fn-name">cfg, theme_id</span>) → <span class="fn-ret">key</span></span></div>
+    </div>
+    <div style="margin-top:8px;">
+      <table class="tbl">
+        <tr><th>Dimension</th><th>Weight</th></tr>
+        <tr><td class="k">task_fit</td><td class="v">30%</td></tr>
+        <tr><td class="k">quality</td><td class="v">20%</td></tr>
+        <tr><td class="k">control</td><td class="v">15%</td></tr>
+        <tr><td class="k">reliability</td><td class="v">15%</td></tr>
+        <tr><td class="k">cost</td><td class="v">10%</td></tr>
+        <tr><td class="k">latency+continuity</td><td class="v">10%</td></tr>
+      </table>
+    </div>
+    <div class="cfg">Logs every decision to <code>output/provider_log.jsonl</code></div>
+  </div>
+
+</div>
+
+<!-- INTELLIGENCE LAYER -->
+<div class="sec">Intelligence &amp; Feedback Loop Modules</div>
+<div class="arch">
+
+  <div class="mod yellow">
+    <div class="mod-title">🕵️ competitor.py</div>
+    <div class="mod-file"><code>core/competitor.py</code> · weekly</div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">scan(<span class="fn-name">cfg, themes, max_results=20</span>) → <span class="fn-ret">report</span></span><div class="fn-desc">YT Data API search.list(videoDuration=short, publishedAfter=30d)</div></div>
+      <div class="fn"><span class="fn-sig">_velocity(<span class="fn-name">views, published_at, days=14</span>) → <span class="fn-ret">float</span></span><div class="fn-desc">views / min(age_days, velocity_days) → views/day</div></div>
+      <div class="fn"><span class="fn-sig">_extract_topics(<span class="fn-name">videos</span>) → <span class="fn-ret">phrases[]</span></span><div class="fn-desc">Counter on title tokens · velocity-weighted · stop-word filtered · bigram pairs</div></div>
+      <div class="fn"><span class="fn-sig">topic_hint_for(<span class="fn-name">theme_id</span>) → <span class="fn-ret">str|None</span></span><div class="fn-desc">random.choice(hot_topics) → injected into scriptgen</div></div>
+    </div>
+    <div class="cfg">Output: <code>output/competitor_report.json</code></div>
+  </div>
+
+  <div class="mod teal">
+    <div class="mod-title">📊 retention.py</div>
+    <div class="mod-file"><code>core/retention.py</code> · weekly</div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">fetch_retention(<span class="fn-name">cfg, days=28</span>) → <span class="fn-ret">data</span></span><div class="fn-desc">YT Analytics API · audienceWatchRatio dim=elapsedVideoTimeRatio</div></div>
+      <div class="fn"><span class="fn-sig">_analyze_curve(<span class="fn-name">curve</span>) → <span class="fn-ret">{drop_at_ratio, drop_pct}</span></span><div class="fn-desc">first ratio where pct_retained &lt; 50% → drop_at_ratio 0.0–1.0</div></div>
+      <div class="fn"><span class="fn-sig">retention_prompt_hint(<span class="fn-name">theme_id</span>) → <span class="fn-ret">str</span></span><div class="fn-desc">injects "RETENTION WARNING" into Gemini prompt if drop_at &lt; 35%</div></div>
+    </div>
+    <div class="cfg">Aggregates by theme → <code>avg_drop_at</code> · verdict: excellent/good/fair/poor</div>
+  </div>
+
+  <div class="mod pink">
+    <div class="mod-title">🖼️ thumbnail_ab.py</div>
+    <div class="mod-file"><code>core/thumbnail_ab.py</code> · daily check</div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">register(<span class="fn-name">video_id, yt_video_id, acct, thumb_a, thumb_b</span>)</span><div class="fn-desc">stores swap_at = now+48h in thumbnail_ab.json</div></div>
+      <div class="fn"><span class="fn-sig">generate_variant_b(<span class="fn-name">video_path, title, theme, cfg</span>) → <span class="fn-ret">path</span></span><div class="fn-desc">extract frame @60% duration · title overlaid at TOP (vs A=bottom)</div></div>
+      <div class="fn"><span class="fn-sig">run_checks(<span class="fn-name">cfg</span>)</span><div class="fn-desc">A@0-48h → CTR_A → swap to B → CTR_B → winner via thumbnails.set</div></div>
+    </div>
+    <div class="cfg">Sequential A/B: one variant live at a time · winner persists</div>
+  </div>
+
+  <div class="mod green">
+    <div class="mod-title">🌐 dubbing.py</div>
+    <div class="mod-file"><code>core/dubbing.py</code> · on-demand / weekly top-3</div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">dub(<span class="fn-name">video_id, lang, cfg, gender</span>) → <span class="fn-ret">path</span></span><div class="fn-desc">_translate_lines(Gemini Flash) → _synth_lines(edge-tts) → _build_dubbed_video(ffmpeg)</div></div>
+      <div class="fn"><span class="fn-sig">dub_top_videos(<span class="fn-name">cfg, langs, limit=3</span>)</span><div class="fn-desc">ranks by views · skips already-dubbed · idempotent</div></div>
+    </div>
+    <div class="pills"><span class="pill gi">es</span><span class="pill gi">pt</span><span class="pill gi">fr</span><span class="pill gi">de</span><span class="pill gi">hi</span></div>
+    <div class="cfg">Re-uses original bg video · rebuilds ASS captions in target lang · new library entry w/ lang= field</div>
+  </div>
+
+  <div class="mod blue">
+    <div class="mod-title">📋 playlists.py</div>
+    <div class="mod-file"><code>core/playlists.py</code> · per-upload hook</div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">ensure_and_add(<span class="fn-name">account_id, theme_id, yt_video_id, cfg</span>) → <span class="fn-ret">playlist_id</span></span><div class="fn-desc">create-or-get → dedup check → playlistItems.insert · idempotent</div></div>
+      <div class="fn"><span class="fn-sig">sync_all(<span class="fn-name">cfg</span>)</span><div class="fn-desc">retroactive: all published videos → correct theme playlists</div></div>
+    </div>
+    <div class="cfg">Store: <code>output/playlists.json</code> keyed by <code>"acct_id::theme_id" → playlist_id</code></div>
+  </div>
+
+  <div class="mod yellow">
+    <div class="mod-title">⏰ analytics.py + scheduler.py</div>
+    <div class="mod-file"><code>core/analytics.py</code> · <code>core/scheduler.py</code></div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">fetch_peak_hours(<span class="fn-name">account_id, cfg, days=28</span>)</span><div class="fn-desc">YT Analytics hourly view distribution → ranked slots → output/peak_hours.json</div></div>
+      <div class="fn"><span class="fn-sig">next_slot(<span class="fn-name">account</span>) → <span class="fn-ret">datetime</span></span><div class="fn-desc">dynamic peak hours → fallback static account.slots → Sun-Thu window</div></div>
+    </div>
+    <div class="cfg">Schedule window: <code>Sun 10pm – Thu 5pm</code> · slots deduplicated per account</div>
+  </div>
+
+</div>
+
+<!-- PUBLISHING -->
+<div class="sec">Publishing · Verification · Accounts</div>
+<div class="arch">
+
+  <div class="mod green">
+    <div class="mod-title">📤 publishers/youtube.py</div>
+    <div class="mod-file"><code>core/publishers/youtube.py</code></div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">publish(<span class="fn-name">video_path, meta, cfg, account, publish_at</span>) → <span class="fn-ret">result</span></span><div class="fn-desc">google-api-python-client · MediaFileUpload resumable · private + publishAt → flips public</div></div>
+    </div>
+    <div class="cfg">SCOPES: <code>youtube + youtube.upload</code> · per-account token at tokens/yt_{id}.json</div>
+    <div class="pills"><span class="pill gr">OAuth2 PKCE</span><span class="pill">scheduled privacy</span><span class="pill">6 channels</span></div>
+  </div>
+
+  <div class="mod teal">
+    <div class="mod-title">✅ upload_verifier.py</div>
+    <div class="mod-file"><code>core/upload_verifier.py</code> · post-autoschedule</div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">verify(<span class="fn-name">cfg, auto_reset=True</span>) → <span class="fn-ret">report</span></span><div class="fn-desc">videos.list for all yt_ids · missing → reset to "review" · clears platform entry</div></div>
+    </div>
+    <div class="cfg">Output: <code>output/upload_verify.json</code> · requires full youtube scope · graceful skip on narrow-scope tokens</div>
+  </div>
+
+  <div class="mod blue">
+    <div class="mod-title">🔑 accounts.py</div>
+    <div class="mod-file"><code>core/accounts.py</code></div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">yt_token_path(<span class="fn-name">account_id</span>) → <span class="fn-ret">path</span></span></div>
+      <div class="fn"><span class="fn-sig">tiktok_token_for(<span class="fn-name">account_id</span>)</span><div class="fn-desc">sandbox OAuth · auto-refreshing tokens · drafts-only until app audit</div></div>
+    </div>
+    <div class="pills"><span class="pill hi">6 YT accounts</span><span class="pill">4 TikTok (sandbox)</span><span class="pill">per-account token files</span></div>
+  </div>
+
+</div>
+
+<!-- STATE + COST -->
+<div class="sec">State Management · Library · Cost Tracking</div>
+<div class="arch">
+
+  <div class="mod blue arch-wide">
+    <div class="mod-title">📁 library.py — Video State Machine</div>
+    <div class="mod-file"><code>core/library.py</code> · flat JSON sidecar files at review/*.json</div>
+    <div class="states" style="margin:14px 0;">
+      <div class="state-node s-review">review<br><span style="font-size:0.6rem;color:#6e7681;">auto-generated</span></div>
+      <div class="state-edge"><div class="line"></div><div class="lbl">human approve</div></div>
+      <div class="state-node s-ready">ready</div>
+      <div class="state-edge"><div class="line"></div><div class="lbl">autoschedule picks</div></div>
+      <div class="state-node s-sched">scheduled<br><span style="font-size:0.6rem;color:#6e7681;">private+publishAt</span></div>
+      <div class="state-edge"><div class="line"></div><div class="lbl">YT flips public</div></div>
+      <div class="state-node s-pub">published</div>
+      <div style="margin-left:20px;display:flex;align-items:center;gap:0;">
+        <div class="state-edge"><div class="line"></div><div class="lbl">verifier missing</div></div>
+        <div class="state-node s-review">review<br><span style="font-size:0.6rem;color:#6e7681;">auto-reset</span></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:20px;font-size:0.7rem;">
+      <div>
+        <div style="color:#8b949e;margin-bottom:4px;">Meta fields (sidecar JSON)</div>
+        <div class="fn-list">
+          <div class="fn"><span style="color:#79c0ff;">id, title, theme, status, created</span></div>
+          <div class="fn"><span style="color:#79c0ff;">lines[], search_terms[], hashtags[]</span></div>
+          <div class="fn"><span style="color:#79c0ff;">platforms: {acct_id: {status, url, publish_at}}</span></div>
+          <div class="fn"><span style="color:#79c0ff;">lang, lang_name, dubbed_from, voice</span></div>
+          <div class="fn"><span style="color:#79c0ff;">trend_source: {topic, score, pitch}</span></div>
+        </div>
+      </div>
+      <div>
+        <div style="color:#8b949e;margin-bottom:4px;">Key methods</div>
+        <div class="fn-list">
+          <div class="fn"><span class="fn-sig">list_videos() → <span class="fn-ret">List[dict]</span></span></div>
+          <div class="fn"><span class="fn-sig">write_meta(<span class="fn-name">path, meta</span>)</span></div>
+          <div class="fn"><span class="fn-sig">set_platform_result(<span class="fn-name">video_id, acct, res</span>)</span></div>
+          <div class="fn"><span class="fn-sig">path_for(<span class="fn-name">video_id</span>) → <span class="fn-ret">str</span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mod orange">
+    <div class="mod-title">💰 cost_tracker.py</div>
+    <div class="mod-file"><code>core/cost_tracker.py</code></div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">RenderCost.<span class="fn-name">start_gpu / stop_gpu</span>()</span><div class="fn-desc">wall-clock GPU time · $0.44/hr RTX-3090-equiv rate</div></div>
+      <div class="fn"><span class="fn-sig">add_gemini_flash() / add_gemini_pro()</span><div class="fn-desc">Flash: $0.0003/call · Pro: $0.012/call</div></div>
+      <div class="fn"><span class="fn-sig">finish() → <span class="fn-ret">record</span></span><div class="fn-desc">appends to cost_log.jsonl · updates cost_summary.json (lifetime + by_theme)</div></div>
+    </div>
+  </div>
+
+  <div class="mod yellow">
+    <div class="mod-title">🗂️ archive_footage.py</div>
+    <div class="mod-file"><code>core/archive_footage.py</code></div>
+    <div class="fn-list">
+      <div class="fn"><span class="fn-sig">fetch_background(<span class="fn-name">theme_id, terms, out</span>) → <span class="fn-ret">path</span></span><div class="fn-desc">Archive.org Advanced Search API · no key · semantic keyword scoring · 9:16 ffmpeg crop</div></div>
+    </div>
+    <div class="cfg">Collections: <code>prelinger</code>(facts/scary) · <code>NASA</code>(zodiac) · rate-limited 1.2s · dedup via used_archive.json</div>
+  </div>
+
+</div>
+
+<!-- API REFERENCE -->
+<div class="sec">Dashboard REST API — Selected Endpoints</div>
+<div style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+
+  <div class="mod blue">
+    <div class="mod-title">Core CRUD + Workflow</div>
+    <div class="fn-list" style="gap:3px;">
+      <div class="ep"><span class="ep-method get">GET</span><span class="ep-path">/api/videos</span><span class="ep-desc">full library list</span></div>
+      <div class="ep"><span class="ep-method post">POST</span><span class="ep-path">/api/generate</span><span class="ep-desc">→ SSE job_id stream</span></div>
+      <div class="ep"><span class="ep-method post">POST</span><span class="ep-path">/api/video/:id</span><span class="ep-desc">update status/meta</span></div>
+      <div class="ep"><span class="ep-method del">DEL</span><span class="ep-path">/api/video/:id</span><span class="ep-desc">delete + disk cleanup</span></div>
+      <div class="ep"><span class="ep-method post">POST</span><span class="ep-path">/api/video/:id/publish</span><span class="ep-desc">manual YT + TT publish</span></div>
+      <div class="ep"><span class="ep-method post">POST</span><span class="ep-path">/api/autopilot/run</span><span class="ep-desc">trigger full pipeline</span></div>
+      <div class="ep"><span class="ep-method post">POST</span><span class="ep-path">/api/upload-verify/run</span><span class="ep-desc">force verify all uploads</span></div>
+    </div>
+  </div>
+
+  <div class="mod purple">
+    <div class="mod-title">Intelligence Endpoints</div>
+    <div class="fn-list" style="gap:3px;">
+      <div class="ep"><span class="ep-method get">GET</span><span class="ep-path">/api/competitor/report</span><span class="ep-desc">hot topics by theme</span></div>
+      <div class="ep"><span class="ep-method post">POST</span><span class="ep-path">/api/competitor/scan</span><span class="ep-desc">trigger YT Data API scan</span></div>
+      <div class="ep"><span class="ep-method get">GET</span><span class="ep-path">/api/retention/report</span><span class="ep-desc">drop curves by theme</span></div>
+      <div class="ep"><span class="ep-method post">POST</span><span class="ep-path">/api/retention/fetch</span><span class="ep-desc">pull Analytics curves</span></div>
+      <div class="ep"><span class="ep-method get">GET</span><span class="ep-path">/api/thumbnail-ab/report</span><span class="ep-desc">A/B state + CTR winners</span></div>
+      <div class="ep"><span class="ep-method post">POST</span><span class="ep-path">/api/dub/run</span><span class="ep-desc">translate + re-synth video</span></div>
+      <div class="ep"><span class="ep-method post">POST</span><span class="ep-path">/api/playlists/sync</span><span class="ep-desc">retroactive playlist add</span></div>
+      <div class="ep"><span class="ep-method get">GET</span><span class="ep-path">/api/cost/summary</span><span class="ep-desc">lifetime + by-theme costs</span></div>
+      <div class="ep"><span class="ep-method post">POST</span><span class="ep-path">/api/peak-hours/refresh</span><span class="ep-desc">re-fetch YT Analytics slots</span></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FILESYSTEM + CONFIG -->
+<div class="sec">Filesystem Layout &amp; Config Schema</div>
+<div class="arch">
+
+  <div class="mod blue arch-half">
+    <div class="mod-title">📂 Directory Structure</div>
+    <pre style="font-size:0.69rem;color:#8b949e;line-height:1.8;overflow-x:auto;">
+<span style="color:#388bfd;">shorts-factory/</span>
+├── <span style="color:#79c0ff;">make_short.py</span>          <span style="color:#444;"># render entrypoint</span>
+├── <span style="color:#79c0ff;">run_autopilot.py</span>       <span style="color:#444;"># daily pipeline</span>
+├── <span style="color:#79c0ff;">dashboard.py</span>           <span style="color:#444;"># Flask :5000</span>
+├── <span style="color:#79c0ff;">dub_video.py</span>           <span style="color:#444;"># CLI dubbing</span>
+├── <span style="color:#79c0ff;">manage_playlists.py</span>    <span style="color:#444;"># CLI playlists</span>
+├── <span style="color:#3fb950;">config.json</span>            <span style="color:#444;"># .gitignored</span>
+├── <span style="color:#d29922;">topics.json</span>            <span style="color:#444;"># topic bank</span>
+├── <span style="color:#388bfd;">core/</span>
+│   ├── <span style="color:#79c0ff;">aivideo.py</span>         <span style="color:#444;"># HunyuanVideo fp8</span>
+│   ├── <span style="color:#79c0ff;">aiimage.py</span>         <span style="color:#444;"># FLUX / SDXL</span>
+│   ├── <span style="color:#79c0ff;">analytics.py</span>       <span style="color:#444;"># YT Analytics API</span>
+│   ├── <span style="color:#79c0ff;">archive_footage.py</span> <span style="color:#444;"># archive.org</span>
+│   ├── <span style="color:#79c0ff;">assemble.py</span>        <span style="color:#444;"># ffmpeg composite</span>
+│   ├── <span style="color:#79c0ff;">autopilot.py</span>       <span style="color:#444;"># quota + retry</span>
+│   ├── <span style="color:#79c0ff;">autoschedule.py</span>    <span style="color:#444;"># YT upload runner</span>
+│   ├── <span style="color:#79c0ff;">captions.py</span>        <span style="color:#444;"># ASS karaoke</span>
+│   ├── <span style="color:#79c0ff;">competitor.py</span>      <span style="color:#444;"># niche scanner</span>
+│   ├── <span style="color:#79c0ff;">cost_tracker.py</span>    <span style="color:#444;"># GPU + API cost</span>
+│   ├── <span style="color:#79c0ff;">dubbing.py</span>         <span style="color:#444;"># multilang dub</span>
+│   ├── <span style="color:#79c0ff;">enhance.py</span>         <span style="color:#444;"># ESRGAN + interp</span>
+│   ├── <span style="color:#79c0ff;">footage.py</span>         <span style="color:#444;"># Pexels + fallback</span>
+│   ├── <span style="color:#79c0ff;">gemini_review.py</span>   <span style="color:#444;"># pre/post gate</span>
+│   ├── <span style="color:#79c0ff;">library.py</span>         <span style="color:#444;"># state machine</span>
+│   ├── <span style="color:#79c0ff;">music.py</span>           <span style="color:#444;"># bed + mix</span>
+│   ├── <span style="color:#79c0ff;">playlists.py</span>       <span style="color:#444;"># YT playlists</span>
+│   ├── <span style="color:#79c0ff;">provider_score.py</span>  <span style="color:#444;"># backend router</span>
+│   ├── <span style="color:#79c0ff;">retention.py</span>       <span style="color:#444;"># watch curves</span>
+│   ├── <span style="color:#79c0ff;">scheduler.py</span>       <span style="color:#444;"># peak slot picker</span>
+│   ├── <span style="color:#79c0ff;">scriptgen.py</span>       <span style="color:#444;"># Ollama/bank</span>
+│   ├── <span style="color:#79c0ff;">thumbnail.py</span>       <span style="color:#444;"># frame extract+overlay</span>
+│   ├── <span style="color:#79c0ff;">thumbnail_ab.py</span>    <span style="color:#444;"># A/B CTR test</span>
+│   ├── <span style="color:#79c0ff;">trends.py</span>          <span style="color:#444;"># trend scanner</span>
+│   ├── <span style="color:#79c0ff;">tts.py</span>             <span style="color:#444;"># Edge TTS engine</span>
+│   ├── <span style="color:#79c0ff;">upload_verifier.py</span> <span style="color:#444;"># silent fail guard</span>
+│   ├── <span style="color:#79c0ff;">verifier.py</span>        <span style="color:#444;"># post-render gate</span>
+│   └── <span style="color:#388bfd;">publishers/</span>
+│       ├── <span style="color:#79c0ff;">youtube.py</span>     <span style="color:#444;"># OAuth2 upload</span>
+│       └── <span style="color:#79c0ff;">tiktok.py</span>      <span style="color:#444;"># sandbox draft</span>
+├── <span style="color:#388bfd;">output/</span>
+│   ├── cost_log.jsonl
+│   ├── cost_summary.json
+│   ├── competitor_report.json
+│   ├── retention.json
+│   ├── thumbnail_ab.json
+│   ├── playlists.json
+│   ├── upload_verify.json
+│   ├── peak_hours.json
+│   └── provider_log.jsonl
+├── <span style="color:#388bfd;">review/</span>               <span style="color:#444;"># *.mp4 + *.json sidecars</span>
+└── <span style="color:#388bfd;">tokens/</span>               <span style="color:#444;"># .gitignored OAuth tokens</span>
+    </pre>
+  </div>
+
+  <div class="mod orange">
+    <div class="mod-title">⚙️ config.json Schema (gitignored)</div>
+    <pre style="font-size:0.68rem;color:#8b949e;line-height:1.9;overflow-x:auto;">
+{
+  <span style="color:#79c0ff;">"gemini"</span>: {
+    <span style="color:#3fb950;">"api_key"</span>: <span style="color:#f0883e;">"..."</span>,
+    <span style="color:#3fb950;">"pre_render_model"</span>: <span style="color:#f0883e;">"gemini-2.5-flash"</span>,
+    <span style="color:#3fb950;">"min_score"</span>: <span style="color:#d2a8ff;">75</span>
+  },
+  <span style="color:#79c0ff;">"ollama"</span>: {
+    <span style="color:#3fb950;">"enabled"</span>: <span style="color:#d2a8ff;">true</span>,
+    <span style="color:#3fb950;">"model"</span>: <span style="color:#f0883e;">"llama3.2"</span>,
+    <span style="color:#3fb950;">"host"</span>: <span style="color:#f0883e;">"http://localhost:11434"</span>
+  },
+  <span style="color:#79c0ff;">"enhance"</span>: {
+    <span style="color:#3fb950;">"enabled"</span>: <span style="color:#d2a8ff;">true</span>,
+    <span style="color:#3fb950;">"upscale_model"</span>: <span style="color:#f0883e;">"RealESRGAN_x2plus"</span>,
+    <span style="color:#3fb950;">"target_fps"</span>: <span style="color:#d2a8ff;">60</span>,
+    <span style="color:#3fb950;">"tile_size"</span>: <span style="color:#d2a8ff;">512</span>
+  },
+  <span style="color:#79c0ff;">"autopilot"</span>: {
+    <span style="color:#3fb950;">"daily_quota"</span>: <span style="color:#d2a8ff;">1</span>,
+    <span style="color:#3fb950;">"exclude_themes"</span>: [<span style="color:#f0883e;">"zodiac_ai"</span>]
+  },
+  <span style="color:#79c0ff;">"playlists"</span>: { <span style="color:#3fb950;">"enabled"</span>: <span style="color:#d2a8ff;">true</span>, <span style="color:#3fb950;">"privacy"</span>: <span style="color:#f0883e;">"public"</span> },
+  <span style="color:#79c0ff;">"competitor"</span>: { <span style="color:#3fb950;">"max_results"</span>: <span style="color:#d2a8ff;">20</span>, <span style="color:#3fb950;">"velocity_days"</span>: <span style="color:#d2a8ff;">14</span> },
+  <span style="color:#79c0ff;">"thumbnail_ab"</span>: { <span style="color:#3fb950;">"check_hours"</span>: <span style="color:#d2a8ff;">48</span> },
+  <span style="color:#79c0ff;">"accounts"</span>: [{
+    <span style="color:#3fb950;">"id"</span>: <span style="color:#f0883e;">"facts-yt"</span>,
+    <span style="color:#3fb950;">"platform"</span>: <span style="color:#f0883e;">"youtube"</span>,
+    <span style="color:#3fb950;">"theme"</span>: <span style="color:#f0883e;">"facts"</span>,
+    <span style="color:#3fb950;">"auto_schedule"</span>: <span style="color:#d2a8ff;">true</span>,
+    <span style="color:#3fb950;">"slots"</span>: [<span style="color:#f0883e;">"08:00"</span>, <span style="color:#f0883e;">"17:00"</span>, <span style="color:#f0883e;">"21:00"</span>]
+  }, <span style="color:#444;">... × 10 accounts</span>]
+}
+    </pre>
+  </div>
+
+</div>
+
+<!-- ENGINEERING DECISIONS -->
+<div class="sec">Notable Engineering Decisions</div>
+<div style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
+  <div class="mod teal" style="padding:14px;">
+    <div class="mod-title" style="margin-bottom:10px;">🧩 Fail-soft everywhere</div>
+    <p style="font-size:0.72rem;color:#8b949e;line-height:1.6;">Every intelligence module (retention, competitor, verifier, A/B) is wrapped in try/except that never blocks the main pipeline. A YouTube Analytics scope error doesn't stop tonight's upload batch.</p>
+  </div>
+  <div class="mod teal" style="padding:14px;">
+    <div class="mod-title" style="margin-bottom:10px;">🔑 No secrets in git</div>
+    <p style="font-size:0.72rem;color:#8b949e;line-height:1.6;">config.json and tokens/ are .gitignored. TikTok access tokens stored encrypted per-account. OAuth refresh handled transparently by google-auth with Credentials.refresh(Request()).</p>
+  </div>
+  <div class="mod teal" style="padding:14px;">
+    <div class="mod-title" style="margin-bottom:10px;">⚖️ ToS boundaries hard-coded</div>
+    <p style="font-size:0.72rem;color:#8b949e;line-height:1.6;">TikTok is never auto-published — per-post human consent enforced at the autoschedule layer. YouTube publishAt scheduling used instead of live uploads to avoid rate limits.</p>
+  </div>
+  <div class="mod teal" style="padding:14px;">
+    <div class="mod-title" style="margin-bottom:10px;">📦 spandrel over basicsr</div>
+    <p style="font-size:0.72rem;color:#8b949e;line-height:1.6;">basicsr fails on Python 3.13 (KeyError: '__version__'). spandrel is a modern ESRGAN runner with no basicsr dep. Tiled processing manages VRAM — configurable tile_size=512.</p>
+  </div>
+  <div class="mod teal" style="padding:14px;">
+    <div class="mod-title" style="margin-bottom:10px;">🗂️ Flat file library</div>
+    <p style="font-size:0.72rem;color:#8b949e;line-height:1.6;">No database. Each video is a .mp4 + .json sidecar pair. list_videos() globs review/. Simple, zero-dependency, git-diffs cleanly, survives power cuts. Works fine at this scale (hundreds of videos).</p>
+  </div>
+  <div class="mod teal" style="padding:14px;">
+    <div class="mod-title" style="margin-bottom:10px;">📡 SSE for job streaming</div>
+    <p style="font-size:0.72rem;color:#8b949e;line-height:1.6;">make_short runs in a background thread, stdout captured and streamed to the dashboard via Server-Sent Events. No WebSocket dependency. Works in all browsers, reconnects automatically.</p>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div style="text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid #21262d;color:#484f58;font-size:0.68rem;">
+  <div style="color:#8b949e;margin-bottom:6px;">Shorts Factory · Built by Landon Armstrong · Python 3.13 · Windows 10 · RTX 3090</div>
+  26 core modules · 40+ API endpoints · 6 YouTube channels · 4 TikTok accounts · 5 languages · Runs fully autonomous Sun–Thu
+</div>
+
+</body>
+</html>
