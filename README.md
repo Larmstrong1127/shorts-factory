@@ -1,6 +1,6 @@
 # Shorts Factory
 
-**Autonomous short-form video production pipeline** — script generation through 4K upscale and multi-platform scheduling, running fully autonomous on a defined weekly window.
+**Autonomous short-form video production pipeline** — script generation through upscale and multi-platform scheduling, running unattended on a defined weekly window. One operator, one Windows box, one RTX 3090.
 
 > Source code is private. This repo showcases the system architecture, tech stack, and design decisions.
 
@@ -8,7 +8,7 @@
 
 ## What It Does
 
-Shorts Factory is a 26-module Python pipeline that autonomously produces, enhances, and publishes short-form video content across 6 YouTube channels. Given a theme and topic bank, it:
+Shorts Factory is a Python pipeline (119 modules in `core/`, ~57k lines, 224 test files as of 2026-08-10 — it grows weekly, so treat any count here as a snapshot) that produces, enhances, and publishes short-form video across ~21 configured accounts on YouTube, TikTok and Meta. Given a theme and topic bank, it:
 
 1. Scans competitor videos via YouTube Data API to surface trending topic signals
 2. Generates scripts using a local LLM (Ollama/llama3.2) gated by a Gemini pre-render quality score
@@ -18,13 +18,13 @@ Shorts Factory is a 26-module Python pipeline that autonomously produces, enhanc
 6. Upscales frames with RealESRGAN x2 (spandrel) and interpolates to 60fps
 7. Schedules uploads to YouTube at peak audience hours via OAuth2
 
-The pipeline runs **~119 videos/month** across 7 content themes within YouTube's API quota.
+Throughput varies with the render window, GPU availability and manual review holds, so this README deliberately quotes no videos-per-month figure — there is no committed artifact behind one. What is stable is the shape: a theme registry, a per-video review gate, and a scheduler that only publishes inside its window and inside YouTube's API quota.
 
 ---
 
 ## Architecture
 
-See [`docs/architecture.html`](docs/architecture.html) for the full interactive system diagram — all 26 modules, data flow, API endpoints, state machine, and engineering decisions.
+See [`docs/architecture.html`](docs/architecture.html) for the interactive system diagram — data flow, API endpoints, state machine, and engineering decisions. The diagram was drawn at 26 modules and documents the core path, not every module in the current tree.
 
 ---
 
@@ -80,16 +80,24 @@ See [`config.schema.json`](config.schema.json) for the full configuration shape 
 
 ---
 
-## Output Scale
+## Scale — stated honestly
 
-| Metric | Value |
+This is a **single-operator system on one machine**, not a service with users.
+Nobody is paying for it and the channels are pre-monetization. The interesting
+constraint is not size, it is that one GPU has to serialize every render, and
+a 45-minute job that crashes takes the host with it.
+
+| | |
 |---|---|
-| Videos generated/month | ~119 |
-| YouTube uploads/month (English) | ~85 |
-| Dubbed uploads/month (es + pt) | ~12 |
-| Active YouTube channels | 6 |
-| Content themes | 7 |
-| Autopilot window | Sun 10pm – Thu 5pm |
+| Operators / users | 1 |
+| Machines | 1 (Windows 10, RTX 3090 24GB) |
+| Configured publishing accounts | ~21 across YouTube / TikTok / Meta |
+| `core/` modules | 119 (~57k lines) |
+| Test files | 224 |
+| Autopilot | a defined weekly window; the schedule is config, and it changes |
+
+Counts re-measured 2026-08-10 and quoted as a snapshot. Views, subscribers and
+revenue are deliberately absent — there is nothing to report.
 
 ---
 
