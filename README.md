@@ -82,6 +82,10 @@ See [`config.schema.json`](config.schema.json) for the full configuration shape 
 
 ## Scale — stated honestly
 
+The closed-loop features above are implemented and wired into the pipeline; this
+README makes no claim about how recently any of them last ran, since several depend
+on API auth state that lapses.
+
 This is a **single-operator system on one machine**, not a service with users.
 Nobody is paying for it and the channels are pre-monetization. The interesting
 constraint is not size, it is that one GPU has to serialize every render, and
